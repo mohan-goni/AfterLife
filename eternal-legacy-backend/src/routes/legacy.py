@@ -47,10 +47,16 @@ def get_legacies(user):
     collab_legacy_ids = [collab.legacy_id for collab in collaborations]
     collab_legacies = Legacy.query.filter(Legacy.id.in_(collab_legacy_ids)).all()
     
-    # Combine and return
-    all_legacies = owned_legacies + collab_legacies
+    # Combine and ensure uniqueness
+    combined_legacies_dict = {leg.id: leg for leg in owned_legacies}
+    for leg in collab_legacies:
+        if leg.id not in combined_legacies_dict:
+            combined_legacies_dict[leg.id] = leg
+            
+    unique_legacies = list(combined_legacies_dict.values())
+    
     return jsonify({
-        'legacies': [legacy.to_dict() for legacy in all_legacies]
+        'legacies': [legacy.to_dict() for legacy in unique_legacies]
     }), 200
 
 @legacy_bp.route('/', methods=['POST'])
@@ -355,31 +361,34 @@ def add_collaborator(user, legacy_id):
     # Add new collaborator
     data = request.get_json()
     
-    if not data or 'user_id' not in data or 'role' not in data:
-        return jsonify({'error': 'User ID and role are required'}), 400
+    if not data or 'email' not in data or 'role' not in data: # Expect 'email' instead of 'user_id'
+        return jsonify({'error': 'Email and role are required'}), 400
     
-    # Check if user exists
-    collab_user = User.query.get(data['user_id'])
+    # Find user by email
+    collab_user = User.query.filter_by(email=data['email']).first()
     if not collab_user:
-        return jsonify({'error': 'User not found'}), 404
+        return jsonify({'error': f"User with email '{data['email']}' not found"}), 404
     
     # Check if already a collaborator
     existing_collab = LegacyCollaborator.query.filter_by(
-        user_id=data['user_id'],
+        user_id=collab_user.id, # Use the found user's ID
         legacy_id=legacy_id
     ).first()
     
     if existing_collab:
-        existing_collab.role = data['role']
-        db.session.commit()
-        return jsonify({
-            'message': 'Collaborator role updated successfully',
-            'collaborator': existing_collab.to_dict()
-        }), 200
-    
+        # Option 1: Update role if user is already a collaborator
+        # existing_collab.role = data['role']
+        # db.session.commit()
+        # return jsonify({
+        #     'message': 'Collaborator role updated successfully',
+        #     'collaborator': existing_collab.to_dict()
+        # }), 200
+        # Option 2: Inform that user is already a collaborator
+        return jsonify({'message': f"User '{collab_user.username}' is already a collaborator on this legacy."}), 200 # Or 409 Conflict
+
     # Create new collaborator
     new_collab = LegacyCollaborator(
-        user_id=data['user_id'],
+        user_id=collab_user.id, # Use the found user's ID
         legacy_id=legacy_id,
         role=data['role']
     )
