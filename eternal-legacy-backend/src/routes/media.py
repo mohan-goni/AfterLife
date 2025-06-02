@@ -14,6 +14,11 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'mp3', 'pdf', 'doc', '
 # Create upload folder if it doesn't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# Define a default max file size for the route-level check (e.g., 16MB)
+# This should ideally be consistent with or smaller than app.config['MAX_CONTENT_LENGTH']
+ROUTE_MAX_FILE_SIZE_MB = 16 
+ROUTE_MAX_FILE_SIZE_BYTES = ROUTE_MAX_FILE_SIZE_MB * 1024 * 1024
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -46,6 +51,11 @@ def token_required(f):
 @media_bp.route('/upload', methods=['POST'])
 @token_required
 def upload_file(user):
+    # Flask's MAX_CONTENT_LENGTH will typically handle oversized requests before this point.
+    # This check is a secondary measure.
+    if request.content_length and request.content_length > ROUTE_MAX_FILE_SIZE_BYTES:
+        return jsonify({'error': f'File too large. Maximum size is {ROUTE_MAX_FILE_SIZE_MB}MB.'}), 413
+
     # Check if the post request has the file part
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
@@ -57,6 +67,13 @@ def upload_file(user):
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
     
+    # It's also good to check the file stream size if possible, though Content-Length is primary.
+    # file.seek(0, os.SEEK_END)
+    # file_length = file.tell()
+    # file.seek(0) # Reset stream position
+    # if file_length > ROUTE_MAX_FILE_SIZE_BYTES:
+    #    return jsonify({'error': f'File content too large. Maximum size is {ROUTE_MAX_FILE_SIZE_MB}MB.'}), 413
+
     if file and allowed_file(file.filename):
         # Generate a secure filename with UUID to prevent collisions
         filename = secure_filename(file.filename)

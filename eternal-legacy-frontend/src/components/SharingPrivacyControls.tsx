@@ -47,17 +47,19 @@ const SharingPrivacyControls = ({ legacyId, initialPrivacyLevel = 'private', onU
     }
     
     try {
-      // This would be replaced with an actual API call
-      // await axios.post(`http://localhost:5000/api/legacies/${legacyId}/collaborators`, {
-      //   email,
-      //   role
-      // });
+      const response = await axios.post(`http://localhost:5000/api/legacies/${legacyId}/collaborators`, {
+        email,
+        role
+      });
       
-      setSuccess(`Invitation sent to ${email}`);
-      setEmail('');
-    } catch (error) {
-      console.error('Error sending invitation:', error);
-      setError('Failed to send invitation. Please try again.');
+      // Assuming the backend returns a 'message' field in the response data
+      setSuccess(response.data.message || `Invitation processed for ${email}`);
+      setEmail(''); // Clear email field on success
+    } catch (err) { // Changed error variable name to avoid conflict with state 'error'
+      const errorMessage = err.response?.data?.error || 'Failed to send invitation. Please try again.';
+      console.error('Error sending invitation:', err.response?.data || err);
+      setError(errorMessage);
+      setSuccess(''); // Clear any previous success message
     } finally {
       setIsLoading(false);
     }

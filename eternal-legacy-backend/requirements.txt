@@ -1,5 +1,15 @@
 Flask==3.1.0
+Flask-CORS==4.0.1 # Added Flask-CORS
 Flask-SQLAlchemy==3.1.1
-PyMySQL==1.1.1
+psycopg2-binary==2.9.9 # For PostgreSQL
 SQLAlchemy==2.0.40
-cryptography==36.0.2
+cryptography==36.0.2 # Used by bcrypt, which is used in User model for password hashing
+bcrypt==4.1.3 # Explicitly add bcrypt as it's used in User model
+Flask-Migrate==4.0.7 # For database migrations, already in use
+python-dotenv==1.0.1 # For .env file loading, already in use
+PyJWT==2.8.0 # For JWT handling, already in use by auth routes
+requests==2.32.3 # For internal HTTP calls in avatar routes, added recently
+
+# Testing dependencies
+pytest==8.2.2
+pytest-flask==1.3.0

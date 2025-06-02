@@ -30,7 +30,7 @@ EternalLegacy is a next-generation full-stack web application that serves as a d
 
 ### Backend
 - Flask with Python
-- MySQL database with SQLAlchemy ORM
+- PostgreSQL database with SQLAlchemy ORM
 - JWT for authentication
 - RESTful API architecture
 
@@ -44,7 +44,7 @@ EternalLegacy is a next-generation full-stack web application that serves as a d
 ### Prerequisites
 - Node.js (v16+)
 - Python (v3.8+)
-- MySQL database
+- PostgreSQL database
 - API keys for third-party services (optional for full functionality)
 
 ### Installation
@@ -67,16 +67,34 @@ EternalLegacy is a next-generation full-stack web application that serves as a d
    ```
 
 4. Set up environment variables:
-   - Create a `.env` file in the backend directory
-   - Add the following variables:
+   - Copy the example environment file: `cp .env.example .env`
+   - **Crucially, open the new `.env` file and set strong, unique values for `SECRET_KEY` and `JWT_SECRET_KEY`.**
+     These keys are vital for your application's security. Do not use default or easily guessable values in production.
+     You can generate a cryptographically secure key using Python:
+     ```bash
+     python -c 'import secrets; print(secrets.token_hex(32))' 
      ```
-     SECRET_KEY=your_secret_key
-     DB_USERNAME=your_db_username
-     DB_PASSWORD=your_db_password
-     DB_HOST=localhost
-     DB_PORT=3306
-     DB_NAME=eternal_legacy
-     JWT_SECRET_KEY=your_jwt_secret
+     Use the output of this command for your `SECRET_KEY` and `JWT_SECRET_KEY` (use different values for each).
+   - Update other variables in `.env` as needed (database credentials, third-party API keys):
+     ```ini
+     # Example content of .env (ensure you update placeholder values)
+     SECRET_KEY="YOUR_GENERATED_FLASK_SECRET_KEY"
+     JWT_SECRET_KEY="YOUR_GENERATED_JWT_SECRET_KEY"
+     
+     DB_USERNAME="your_db_username"
+     DB_PASSWORD="your_db_password"
+     DB_HOST="localhost"
+     DB_PORT="5432"
+     DB_NAME="eternal_legacy"
+     
+     # API keys for third-party services (now used by backend proxy)
+     # Only fill these if you intend to use the corresponding features.
+     DEEPMOTION_API_KEY="YOUR_DEEPMOTION_API_KEY_HERE"
+     ELEVENLABS_API_KEY="YOUR_ELEVENLABS_API_KEY_HERE"
+     OPENAI_API_KEY="YOUR_OPENAI_API_KEY_HERE"
+
+     # Optional: Max Upload Size in MB for media files (defaults to 16MB if not set)
+     # MAX_UPLOAD_MB="16"
      ```
 
 5. Initialize the database:
@@ -104,13 +122,11 @@ EternalLegacy is a next-generation full-stack web application that serves as a d
 
 3. Set up environment variables:
    - Create a `.env` file in the frontend directory
-   - Add the following variables (optional for full functionality):
+   - Add the following variable:
      ```
      REACT_APP_API_URL=http://localhost:5000
-     REACT_APP_AVATAR_API_KEY=your_deepmotion_or_did_api_key
-     REACT_APP_ELEVENLABS_API_KEY=your_elevenlabs_api_key
-     REACT_APP_OPENAI_API_KEY=your_openai_api_key
      ```
+   - **Note:** API keys for DeepMotion/D-ID, ElevenLabs, and OpenAI are now managed by the backend. Do NOT put them in the frontend `.env` file.
 
 4. Run the frontend development server:
    ```
@@ -137,10 +153,18 @@ EternalLegacy is a next-generation full-stack web application that serves as a d
 - `GET /api/media/files`: Get all media files for the current user
 - `DELETE /api/media/files/:filename`: Delete a specific media file
 
-### Avatar Endpoints
-- `POST /api/avatar/generate`: Generate a 3D avatar from an image
-- `POST /api/avatar/voice`: Clone a voice from audio samples
-- `POST /api/avatar/speech`: Generate speech from text using a cloned voice
+### Avatar Endpoints (User-Facing & Documented)
+These endpoints provide a consistent API for avatar-related operations and internally use the `/api/services/*` proxy to communicate with third-party services securely.
+- `POST /api/avatar/generate`: Handles avatar generation requests. Internally calls `/api/services/avatar/generate`.
+- `POST /api/avatar/voice`: Handles voice cloning requests. Internally calls `/api/services/voice/clone`.
+- `POST /api/avatar/speech`: Handles speech synthesis requests. Internally calls `/api/services/voice/speak`.
+
+### Service Proxy Endpoints (Internal Backend Infrastructure)
+These endpoints are called by the `/api/avatar/*` wrapper endpoints and are responsible for the direct interaction with third-party services, using API keys stored on the backend.
+- `POST /api/services/avatar/generate`: Proxies request to 3D avatar generation service (e.g., DeepMotion/D-ID).
+- `POST /api/services/voice/clone`: Proxies request to voice cloning service.
+- `POST /api/services/voice/speak`: Proxies request for text-to-speech.
+- `POST /api/services/ai/chat`: Proxies request to conversational AI service.
 
 ## Project Structure
 
@@ -195,19 +219,19 @@ eternal-legacy-frontend/
 ## Third-Party API Integration
 
 ### DeepMotion/D-ID (3D Avatar Generation)
-The application uses DeepMotion or D-ID API to generate 3D avatars from user photos. To enable this functionality:
-1. Sign up for an API key at [DeepMotion](https://www.deepmotion.com/) or [D-ID](https://www.d-id.com/)
-2. Add your API key to the frontend environment variables
+The application uses DeepMotion or D-ID API to generate 3D avatars from user photos. These calls are now proxied through the backend. To enable this functionality:
+1. Sign up for an API key at [DeepMotion](https://www.deepmotion.com/) or [D-ID](https://www.d-id.com/).
+2. Add your API key as `DEEPMOTION_API_KEY` (or a similar chosen name) in the backend's `.env` file.
 
 ### ElevenLabs (Voice Cloning)
-The application uses ElevenLabs API for voice cloning and speech synthesis. To enable this functionality:
-1. Sign up for an API key at [ElevenLabs](https://elevenlabs.io/)
-2. Add your API key to the frontend environment variables
+The application uses ElevenLabs API for voice cloning and speech synthesis, proxied through the backend. To enable this functionality:
+1. Sign up for an API key at [ElevenLabs](https://elevenlabs.io/).
+2. Add your API key as `ELEVENLABS_API_KEY` in the backend's `.env` file.
 
 ### OpenAI (Conversational AI)
-The application uses OpenAI API for the AI guidance system. To enable this functionality:
-1. Sign up for an API key at [OpenAI](https://openai.com/)
-2. Add your API key to the frontend environment variables
+The application uses OpenAI API for the AI guidance system, proxied through the backend. To enable this functionality:
+1. Sign up for an API key at [OpenAI](https://openai.com/).
+2. Add your API key as `OPENAI_API_KEY` in the backend's `.env` file.
 
 ## Contributing
 Contributions are welcome! Please feel free to submit a Pull Request.
